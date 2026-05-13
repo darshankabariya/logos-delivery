@@ -70,20 +70,30 @@ proc getMissingMsgsFromStore(
     )
   )
 
-proc processIncomingMessageOfInterest(
+proc processIncomingMessage(
     self: RecvService, pubsubTopic: string, message: WakuMessage
 ): bool =
-  ## Deduplicate (by hash), store (saves in recently-seen messages) and emit
-  ## the MAPI MessageReceivedEvent for every unique incoming message.
-  ## Returns true if the message was new and the MessageReceivedEvent was properly emitted.
+  ## Return false if the incoming message is from a non-subscribed topic,
+  ## or if the message is a duplicate (recently-seen). Otherwise, save it as
+  ## recently-seen, emit a MessageReceivedEvent, and return true.
+
+  if not self.subscriptionManager.isSubscribed(pubsubTopic, message.contentTopic):
+    trace "skipping message as I am not subscribed",
+      shard = pubsubTopic, contentTopic = message.contentTopic
+    return false
 
   let msgHash = computeMessageHash(pubsubTopic, message)
-  if not self.recentReceivedMsgs.anyIt(it.msgHash == msgHash):
-    let rxMsg = RecvMessage(msgHash: msgHash, rxTime: message.timestamp)
-    self.recentReceivedMsgs.add(rxMsg)
-    MessageReceivedEvent.emit(self.brokerCtx, msgHash.to0xHex(), message)
-    return true
-  return false
+  if self.recentReceivedMsgs.anyIt(it.msgHash == msgHash):
+    trace "skipping duplicate message",
+      shard = pubsubTopic,
+      contentTopic = message.contentTopic,
+      msg_hash = msgHash.to0xHex()
+    return false
+
+  let rxMsg = RecvMessage(msgHash: msgHash, rxTime: message.timestamp)
+  self.recentReceivedMsgs.add(rxMsg)
+  MessageReceivedEvent.emit(self.brokerCtx, msgHash.to0xHex(), message)
+  return true
 
 proc checkStore*(self: RecvService) {.async.} =
   ## Checks the store for messages that were not received directly and
@@ -121,7 +131,7 @@ proc checkStore*(self: RecvService) {.async.} =
       let missingMsgsRet = await self.getMissingMsgsFromStore(missedHashes)
       if missingMsgsRet.isOk():
         for msgTuple in missingMsgsRet.get():
-          if self.processIncomingMessageOfInterest(msgTuple.pubsubTopic, msgTuple.msg):
+          if self.processIncomingMessage(msgTuple.pubsubTopic, msgTuple.msg):
             info "recv service store-recovered message",
               msg_hash = shortLog(msgTuple.hash), pubsubTopic = msgTuple.pubsubTopic
       else:
@@ -163,14 +173,7 @@ proc startRecvService*(self: RecvService) =
   self.seenMsgListener = MessageSeenEvent.listen(
     self.brokerCtx,
     proc(event: MessageSeenEvent) {.async: (raises: []).} =
-      if not self.subscriptionManager.isSubscribed(
-        event.topic, event.message.contentTopic
-      ):
-        trace "skipping message as I am not subscribed",
-          shard = event.topic, contenttopic = event.message.contentTopic
-        return
-
-      discard self.processIncomingMessageOfInterest(event.topic, event.message),
+      discard self.processIncomingMessage(event.topic, event.message),
   ).valueOr:
     error "Failed to set MessageSeenEvent listener", error = error
     quit(QuitFailure)
