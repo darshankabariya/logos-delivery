@@ -1,3 +1,4 @@
+import logos_delivery/waku/compat/option_valueor
 import std/[sequtils, strutils, tables]
 import chronicles, chronos, results, options, json, ffi
 import

@@ -28,7 +28,7 @@ requires "nim >= 2.2.4",
   "toml_serialization",
   "faststreams",
   # Networking & P2P
-  "https://github.com/vacp2p/nim-libp2p.git#ff8d51857b4b79a68468e7bcc27b2026cca02996",
+  "https://github.com/vacp2p/nim-libp2p.git#v2.0.0",
   "eth",
   "nat_traversal",
   "dnsdisc",
@@ -40,7 +40,7 @@ requires "nim >= 2.2.4",
   "secp256k1",
   "bearssl",
   # RPC & APIs
-  "https://github.com/status-im/nim-json-rpc.git#43bbf499143eb45046c83ac9794c9e3280a2b8e7",
+  "https://github.com/status-im/nim-json-rpc.git#v0.6.1",
   "presto",
   "web3",
   # Database
@@ -67,8 +67,9 @@ requires "https://github.com/logos-messaging/nim-sds.git#abdd40cc645f1b024c3ee99
 
 requires "https://github.com/NagyZoltanPeter/nim-brokers.git#v3.1.1"
 
-requires "https://github.com/vacp2p/nim-lsquic"
+requires "https://github.com/vacp2p/nim-lsquic.git#v0.5.1"
 requires "https://github.com/vacp2p/nim-jwt.git#057ec95eb5af0eea9c49bfe9025b3312c95dc5f2"
+requires "https://github.com/logos-co/nim-libp2p-mix#380513117d556bf8f70066f5e72a7fd74fe36ba6"
 
 proc getMyCPU(): string =
   ## Need to set cpu more explicit manner to avoid arch issues between dependencies
