@@ -685,6 +685,18 @@ hence would have reachability issues.""",
       name: "kad-bootstrap-node"
     .}: seq[string]
 
+    kadRandomLookupIntervalSec* {.
+      desc: "Interval seconds between random kademlia lookups.",
+      defaultValue: 60,
+      name: "kad-random-lookup-interval"
+    .}: uint32
+
+    kadServiceLookupIntervalSec* {.
+      desc: "Interval seconds between service-specific kademlia lookups.",
+      defaultValue: 60,
+      name: "kad-service-lookup-interval"
+    .}: uint32
+
     ## websocket config
     websocketSupport* {.
       desc: "Enable websocket:  true|false",
@@ -1182,6 +1194,15 @@ proc toWakuConf*(n: WakuNodeConf): ConfResult[WakuConf] =
   if n.enableKadDiscovery.isSome():
     b.kademliaDiscoveryConf.withEnabled(n.enableKadDiscovery.get())
   b.kademliaDiscoveryConf.withBootstrapNodes(n.kadBootstrapNodes)
+
+  if n.kadRandomLookupIntervalSec > 0:
+    b.kademliaDiscoveryConf.withRandomLookupInterval(
+      chronos.seconds(n.kadRandomLookupIntervalSec.int64)
+    )
+  if n.kadServiceLookupIntervalSec > 0:
+    b.kademliaDiscoveryConf.withServiceLookupInterval(
+      chronos.seconds(n.kadServiceLookupIntervalSec.int64)
+    )
 
   # Mode-driven configuration overrides
   case n.mode
